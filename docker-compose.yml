@@ -1,38 +1,40 @@
-version: '3'
+version: "3.9"
 
 services:
-  postgresDB:
-      image: postgres:13.7
-      volumes:
-        - keycloak-db-data:/var/lib/postgresql/data
-      environment:
-        POSTGRES_DB: keycloakDB
-        POSTGRES_USER: keycloak
-        POSTGRES_PASSWORD: changeMe
+  postgres:
+    image: postgres:13.2
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRESQL_DB}
+      POSTGRES_USER: ${POSTGRESQL_USER}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   keycloak:
-      build: .
-      environment:
-#Database Configuration
-        KC_DB: keycloakDB
-        KC_DB_URL: 'jdbc:postgresql://postgresDB/keycloakDB'
-        KC_DB_USERNAME: keycloak
-        KC_DB_PASSWORD: changeMe
-        KC_DB_SCHEMA: public
-#Hostname Configuration
-        KC_HOSTNAME: "yourpublic.hostname.com"
-        KC_HOSTNAME_STRICT_HTTPS: 'true'
-#Admin Credentials
-        KEYCLOAK_USER: admin
-        KEYCLOAK_PASSWORD: CHanGeMe
-        KEYCLOAK_ADMIN: admin
-        KEYCLOAK_ADMIN_PASSWORD: CHanGeMe
-        
-      ports:
-        - 8080:8080
-      depends_on:
-        - postgresDB
+    depends_on:
+      - postgres
+    container_name: keycloak
+    environment:
+      DB_VENDOR: postgres
+      DB_ADDR: postgres
+      DB_DATABASE: ${POSTGRESQL_DB}
+      DB_USER: ${POSTGRESQL_USER}
+      DB_PASSWORD: ${POSTGRESQL_PASS}
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      LETSENCRYPT_HOST: ${LETSENCRYPT_HOST}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_PORT: "8080"
+      HTTPS_METHOD: redirect
+      PROXY_ADDRESS_FORWARDING: "true" # <==== very important if you use reverse proxy
+    image: jboss/keycloak:${KEYCLOAK_VERSION}
+    restart: unless-stopped
 
 volumes:
-  keycloak-db-data:
-      driver: local
+  postgres_data:
+
+#Use this configuration in production with nginx-proxy container
+networks:
+  default:
+    external:
+      name: nginx-proxy
